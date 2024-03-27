@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  vtiger:
+    image: javanile/vtiger:7.2.0
+    restart: always
+    environment:
+      - VT_SITE_URL=https://domain.com
+      - VT_SCHEDULER=1
+      - VT_INSTALL=1
+      - MYSQL_HOST=mysql
+      - MYSQL_DATABASE=vtiger
+      - MYSQL_ROOT_PASSWORD=vtiger
+    depends_on:
+      - mysql
+    networks:
+      - vtiger-net
+
+  mysql:
+    image: mariadb:10.7.1
+    restart: always
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - MYSQL_DATABASE=vtiger
+      - MYSQL_ROOT_PASSWORD=vtiger
+      - MYSQLD_INITDB_SKIP_TZINFO=yes
+    command: --sql_mode=ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    volumes:
+      - vtiger_system_files_db:/var/lib/mysql:rw
+    networks:
+      - vtiger-net
+
+  https-portal:
+    image: steveltn/https-portal:latest
+    ports:
+      - '6080:80'
+      - '6443:443'
+    restart: always
+    environment:
+      DOMAINS: 'domain.com -> http://vtiger'
+      STAGE: 'local'
+#production
+    volumes:
+      - vtiger_system_files_certs:/var/lib/https-portal
+    depends_on:
+      - vtiger
+    networks:
+      - vtiger-net
+
+networks:
+  vtiger-net:
+    driver: bridge
+
+volumes:
+  vtiger_system_files_db:
+  vtiger_system_files_certs:
